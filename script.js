@@ -178,7 +178,16 @@ function viewBlog() {
             <h3>${escapeHtml(p.title)}</h3>
             <div>${escapeHtml(p.text)}</div>
         </article>`).join('');
-    return `<h2>Блог</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${posts || '<p class="mut">Пока нет записей.</p>'}</div>`;
+    const adminForm = isUserAdmin() ? `
+        <form class="panel editor section-title" id="post-form" onsubmit="event.preventDefault(); savePost()">
+            <h3>Добавить запись</h3>
+            <input name="id" type="hidden">
+            <label>Заголовок<input name="title" maxlength="150" required></label>
+            <label>Текст<textarea name="text" maxlength="10000" rows="5" required></textarea></label>
+            <button class="p">Опубликовать</button>
+        </form>` : '';
+    return `<h2>Блог</h2>${adminForm}
+        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${posts || '<p class="mut">Пока нет записей.</p>'}</div>`;
 }
 
 function viewCart() {
