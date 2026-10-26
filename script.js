@@ -255,14 +255,16 @@ function viewLogin() {
         </section>`;
 }
 function viewRegister() {
-    return `<h2>Регистрация</h2>
-        <form class="panel auth" onsubmit="event.preventDefault(); doRegister()">
-            <label>Имя<input id="reg-name" maxlength="80" autocomplete="name" required></label>
-            <label>Email<input id="reg-email" type="email" autocomplete="username" required></label>
-            <label>Пароль (от 6 символов)<input id="reg-pass" type="password" minlength="6" maxlength="128" autocomplete="new-password" required></label>
-            <button class="auth-register">Зарегистрироваться</button>
-            <a href="#login">Уже есть аккаунт</a>
-        </form>`;
+    return `<section class="auth-page">
+            <h2>Регистрация</h2>
+            <form class="panel auth" onsubmit="event.preventDefault(); doRegister()">
+                <label>Имя<input id="reg-name" maxlength="80" autocomplete="name" required></label>
+                <label>Email<input id="reg-email" type="email" autocomplete="username" required></label>
+                <label>Пароль (от 6 символов)<input id="reg-pass" type="password" minlength="6" maxlength="128" autocomplete="new-password" required></label>
+                <button class="c">Зарегистрироваться</button>
+                <a class="auth-register" href="#login">Уже есть аккаунт</a>
+            </form>
+        </section>`;
 }
 async function doLogin() {
     try {
