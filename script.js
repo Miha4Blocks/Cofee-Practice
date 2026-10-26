@@ -246,7 +246,7 @@ function viewLogin() {
     return `<section class="auth-page">
             <h2>Вход</h2>
             <form class="panel auth" onsubmit="event.preventDefault(); doLogin()">
-                <label>Email<input id="login-email" type="email" autocomplete="username" required></label>
+                <label>Логин или email<input id="login-identifier" type="text" autocomplete="username" required></label>
                 <label>Пароль<input id="login-pass" type="password" autocomplete="current-password" required></label>
                 <button class="c">Войти</button>
                 <a class="auth-register" href="#register">Зарегистрироваться</a>
@@ -259,7 +259,8 @@ function viewRegister() {
             <h2>Регистрация</h2>
             <form class="panel auth" onsubmit="event.preventDefault(); doRegister()">
                 <label>Имя<input id="reg-name" maxlength="80" autocomplete="name" required></label>
-                <label>Email<input id="reg-email" type="email" autocomplete="username" required></label>
+                <label>Логин<input id="reg-login" minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{2,29}" autocomplete="username" required></label>
+                <label>Email<input id="reg-email" type="email" autocomplete="email" required></label>
                 <label>Пароль (от 6 символов)<input id="reg-pass" type="password" minlength="6" maxlength="128" autocomplete="new-password" required></label>
                 <button class="c">Зарегистрироваться</button>
                 <a class="auth-register" href="#login">Уже есть аккаунт</a>
@@ -268,14 +269,19 @@ function viewRegister() {
 }
 async function doLogin() {
     try {
-        await api('login', { email: $('#login-email').value.trim(), pass: $('#login-pass').value });
+        await api('login', { identifier: $('#login-identifier').value.trim(), pass: $('#login-pass').value });
         await loadState();
         navigateTo(cartQty() ? 'cart' : 'home');
     } catch (error) { toast(error.message); }
 }
 async function doRegister() {
     try {
-        await api('register', { name: $('#reg-name').value, email: $('#reg-email').value, pass: $('#reg-pass').value });
+        await api('register', {
+            name: $('#reg-name').value,
+            login: $('#reg-login').value.trim(),
+            email: $('#reg-email').value,
+            pass: $('#reg-pass').value
+        });
         await loadState();
         navigateTo(cartQty() ? 'cart' : 'home');
     } catch (error) { toast(error.message); }
