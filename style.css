@@ -1,5 +1,6 @@
 :root {
     --bg: #E8ECE7;
+    --page-bg: #F4F6F3;
     --sf: #F6F8F5;
     --ink: #16241F;
     --mut: #5B6B64;
@@ -11,6 +12,7 @@
 @media (prefers-color-scheme: dark) {
     :root {
         --bg: #101A17;
+        --page-bg: #18251F;
         --sf: #18251F;
         --ink: #E8EEE9;
         --mut: #93A39A;
@@ -26,7 +28,7 @@ html { scroll-padding-top: env(safe-area-inset-top, 0px); }
 
 body {
     margin: 0;
-    background: var(--bg);
+    background: var(--page-bg);
     color: var(--ink);
     font: 400 16px/1.55 Onest, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     padding-top: env(safe-area-inset-top, 0px);
