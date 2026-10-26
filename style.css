@@ -236,7 +236,27 @@ th, td {
     overflow: auto;
 }
 
-.auth { max-width: 420px; display: grid; gap: 14px; }
+.auth { width: 100%; max-width: 420px; display: grid; gap: 14px; }
+.auth-page {
+    min-height: calc(100vh - 164px);
+    min-height: calc(100svh - 164px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.auth-page h2 { text-align: center; }
+.auth-register {
+    display: block;
+    padding: 8px 14px;
+    border: 1px solid var(--pine);
+    border-radius: 10px;
+    background: var(--pine);
+    color: #fff;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+}
 label { display: block; }
 label input, label textarea { margin-top: 5px; }
 .editor { display: grid; gap: 12px; margin-bottom: 16px; }

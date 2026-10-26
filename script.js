@@ -243,14 +243,16 @@ function viewLogin() {
                 <p><button class="p" onclick="logout()">Выйти</button></p>
             </div>`;
     }
-    return `<h2>Вход</h2>
-        <form class="panel auth" onsubmit="event.preventDefault(); doLogin()">
-            <label>Email<input id="login-email" type="email" autocomplete="username" required></label>
-            <label>Пароль<input id="login-pass" type="password" autocomplete="current-password" required></label>
-            <button class="c">Войти</button>
-            <a href="#register">Зарегистрироваться</a>
-            <p class="mut">Учебный администратор: admin@zerno.ru / admin123</p>
-        </form>`;
+    return `<section class="auth-page">
+            <h2>Вход</h2>
+            <form class="panel auth" onsubmit="event.preventDefault(); doLogin()">
+                <label>Email<input id="login-email" type="email" autocomplete="username" required></label>
+                <label>Пароль<input id="login-pass" type="password" autocomplete="current-password" required></label>
+                <button class="c">Войти</button>
+                <a class="auth-register" href="#register">Зарегистрироваться</a>
+                <p class="mut">Учебный администратор: admin@zerno.ru / admin123</p>
+            </form>
+        </section>`;
 }
 function viewRegister() {
     return `<h2>Регистрация</h2>
@@ -258,7 +260,7 @@ function viewRegister() {
             <label>Имя<input id="reg-name" maxlength="80" autocomplete="name" required></label>
             <label>Email<input id="reg-email" type="email" autocomplete="username" required></label>
             <label>Пароль (от 6 символов)<input id="reg-pass" type="password" minlength="6" maxlength="128" autocomplete="new-password" required></label>
-            <button class="c">Зарегистрироваться</button>
+            <button class="auth-register">Зарегистрироваться</button>
             <a href="#login">Уже есть аккаунт</a>
         </form>`;
 }
