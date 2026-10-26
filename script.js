@@ -173,10 +173,15 @@ function renderCatalogGrid() {
 
 function viewBlog() {
     const posts = state.posts.slice().reverse().map(p => `
-        <article class="card">
+        <article class="card blog-post">
             <span class="mut">${p.date}</span>
             <h3>${escapeHtml(p.title)}</h3>
-            <div>${escapeHtml(p.text)}</div>
+            <div class="blog-post-text collapsed">${escapeHtml(p.text)}</div>
+            <button class="blog-toggle" type="button" aria-expanded="false" onclick="toggleBlogPost(this)" hidden>Развернуть</button>
+            ${isUserAdmin() ? `<div class="row blog-post-actions">
+                <button onclick="editPost(${p.id})">Изменить</button>
+                <button onclick="deleteEntry('post',${p.id})">Удалить</button>
+            </div>` : ''}
         </article>`).join('');
     const adminForm = isUserAdmin() ? `
         <form class="panel editor section-title" id="post-form" onsubmit="event.preventDefault(); savePost()">
@@ -184,10 +189,36 @@ function viewBlog() {
             <input name="id" type="hidden">
             <label>Заголовок<input name="title" maxlength="150" required></label>
             <label>Текст<textarea name="text" maxlength="10000" rows="5" required></textarea></label>
-            <button class="p">Опубликовать</button>
+            <div>
+                <button class="p">Сохранить запись</button>
+                <button id="cancel-post-edit" type="button" onclick="resetPostForm()" hidden>Отменить редактирование</button>
+            </div>
         </form>` : '';
     return `<h2>Блог</h2>${adminForm}
-        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${posts || '<p class="mut">Пока нет записей.</p>'}</div>`;
+        <div class="grid blog-grid">${posts || '<p class="mut">Пока нет записей.</p>'}</div>`;
+}
+
+function initBlog() {
+    for (const article of document.querySelectorAll('.blog-post')) {
+        const text = article.querySelector('.blog-post-text');
+        const toggle = article.querySelector('.blog-toggle');
+        if (!text || !toggle) continue;
+        const needsExpansion = text.scrollHeight > text.clientHeight;
+        toggle.hidden = !needsExpansion;
+        article.classList.toggle('collapsed', needsExpansion);
+        if (!needsExpansion) text.classList.remove('collapsed');
+    }
+}
+
+function toggleBlogPost(button) {
+    const text = button.previousElementSibling;
+    const article = button.closest('.blog-post');
+    if (!text || !article || !text.classList.contains('blog-post-text')) return;
+    const expanded = text.classList.toggle('collapsed');
+    article.classList.toggle('collapsed', expanded);
+    article.classList.toggle('expanded', !expanded);
+    button.setAttribute('aria-expanded', String(!expanded));
+    button.textContent = expanded ? 'Развернуть' : 'Свернуть';
 }
 
 function viewCart() {
@@ -341,8 +372,22 @@ function editProduct(id) {
 function editPost(id) {
     const post = state.posts.find(p => p.id === id);
     const form = $('#post-form');
+    if (!post || !form) return;
     for (const name of ['id', 'title', 'text']) form.elements[name].value = post[name];
+    const heading = form.querySelector('h3');
+    if (heading) heading.textContent = 'Редактировать запись';
+    const cancelButton = $('#cancel-post-edit');
+    if (cancelButton) cancelButton.hidden = false;
     form.scrollIntoView({ block: 'center' });
+}
+function resetPostForm() {
+    const form = $('#post-form');
+    if (!form) return;
+    form.reset();
+    const heading = form.querySelector('h3');
+    if (heading) heading.textContent = 'Добавить запись';
+    const cancelButton = $('#cancel-post-edit');
+    if (cancelButton) cancelButton.hidden = true;
 }
 async function saveProduct() {
     const data = Object.fromEntries(new FormData($('#product-form')));
@@ -489,6 +534,7 @@ function renderPage() {
     $('#app').innerHTML = (views[route] || viewHome)();
 
     if (route === 'catalog') initSearch();
+    if (route === 'blog')    initBlog();
     if (route === 'cart')    initStickers();
 }
 
