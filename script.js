@@ -173,12 +173,52 @@ function renderCatalogGrid() {
 
 function viewBlog() {
     const posts = state.posts.slice().reverse().map(p => `
-        <article class="card">
+        <article class="card blog-post">
             <span class="mut">${p.date}</span>
             <h3>${escapeHtml(p.title)}</h3>
-            <div>${escapeHtml(p.text)}</div>
+            <div class="blog-post-text collapsed">${escapeHtml(p.text)}</div>
+            <button class="blog-toggle" type="button" aria-expanded="false" onclick="toggleBlogPost(this)" hidden>Развернуть</button>
+            ${isUserAdmin() ? `<div class="row blog-post-actions">
+                <button onclick="editPost(${p.id})">Изменить</button>
+                <button onclick="deleteEntry('post',${p.id})">Удалить</button>
+            </div>` : ''}
         </article>`).join('');
-    return `<h2>Блог</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${posts || '<p class="mut">Пока нет записей.</p>'}</div>`;
+    const adminForm = isUserAdmin() ? `
+        <form class="panel editor section-title" id="post-form" onsubmit="event.preventDefault(); savePost()">
+            <h3>Добавить запись</h3>
+            <input name="id" type="hidden">
+            <label>Заголовок<input name="title" maxlength="150" required></label>
+            <label>Текст<textarea name="text" maxlength="10000" rows="5" required></textarea></label>
+            <div>
+                <button class="p">Сохранить запись</button>
+                <button id="cancel-post-edit" type="button" onclick="resetPostForm()" hidden>Отменить редактирование</button>
+            </div>
+        </form>` : '';
+    return `<h2>Блог</h2>${adminForm}
+        <div class="grid blog-grid">${posts || '<p class="mut">Пока нет записей.</p>'}</div>`;
+}
+
+function initBlog() {
+    for (const article of document.querySelectorAll('.blog-post')) {
+        const text = article.querySelector('.blog-post-text');
+        const toggle = article.querySelector('.blog-toggle');
+        if (!text || !toggle) continue;
+        const needsExpansion = text.scrollHeight > text.clientHeight;
+        toggle.hidden = !needsExpansion;
+        article.classList.toggle('collapsed', needsExpansion);
+        if (!needsExpansion) text.classList.remove('collapsed');
+    }
+}
+
+function toggleBlogPost(button) {
+    const text = button.previousElementSibling;
+    const article = button.closest('.blog-post');
+    if (!text || !article || !text.classList.contains('blog-post-text')) return;
+    const expanded = text.classList.toggle('collapsed');
+    article.classList.toggle('collapsed', expanded);
+    article.classList.toggle('expanded', !expanded);
+    button.setAttribute('aria-expanded', String(!expanded));
+    button.textContent = expanded ? 'Развернуть' : 'Свернуть';
 }
 
 function viewCart() {
@@ -246,7 +286,7 @@ function viewLogin() {
     return `<section class="auth-page">
             <h2>Вход</h2>
             <form class="panel auth" onsubmit="event.preventDefault(); doLogin()">
-                <label>Email<input id="login-email" type="email" autocomplete="username" required></label>
+                <label>Логин или email<input id="login-identifier" type="text" autocomplete="username" required></label>
                 <label>Пароль<input id="login-pass" type="password" autocomplete="current-password" required></label>
                 <button class="c">Войти</button>
                 <a class="auth-register" href="#register">Зарегистрироваться</a>
@@ -259,7 +299,8 @@ function viewRegister() {
             <h2>Регистрация</h2>
             <form class="panel auth" onsubmit="event.preventDefault(); doRegister()">
                 <label>Имя<input id="reg-name" maxlength="80" autocomplete="name" required></label>
-                <label>Email<input id="reg-email" type="email" autocomplete="username" required></label>
+                <label>Логин<input id="reg-login" minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{2,29}" autocomplete="username" required></label>
+                <label>Email<input id="reg-email" type="email" autocomplete="email" required></label>
                 <label>Пароль (от 6 символов)<input id="reg-pass" type="password" minlength="6" maxlength="128" autocomplete="new-password" required></label>
                 <button class="c">Зарегистрироваться</button>
                 <a class="auth-register" href="#login">Уже есть аккаунт</a>
@@ -268,14 +309,19 @@ function viewRegister() {
 }
 async function doLogin() {
     try {
-        await api('login', { email: $('#login-email').value.trim(), pass: $('#login-pass').value });
+        await api('login', { identifier: $('#login-identifier').value.trim(), pass: $('#login-pass').value });
         await loadState();
         navigateTo(cartQty() ? 'cart' : 'home');
     } catch (error) { toast(error.message); }
 }
 async function doRegister() {
     try {
-        await api('register', { name: $('#reg-name').value, email: $('#reg-email').value, pass: $('#reg-pass').value });
+        await api('register', {
+            name: $('#reg-name').value,
+            login: $('#reg-login').value.trim(),
+            email: $('#reg-email').value,
+            pass: $('#reg-pass').value
+        });
         await loadState();
         navigateTo(cartQty() ? 'cart' : 'home');
     } catch (error) { toast(error.message); }
@@ -326,8 +372,22 @@ function editProduct(id) {
 function editPost(id) {
     const post = state.posts.find(p => p.id === id);
     const form = $('#post-form');
+    if (!post || !form) return;
     for (const name of ['id', 'title', 'text']) form.elements[name].value = post[name];
+    const heading = form.querySelector('h3');
+    if (heading) heading.textContent = 'Редактировать запись';
+    const cancelButton = $('#cancel-post-edit');
+    if (cancelButton) cancelButton.hidden = false;
     form.scrollIntoView({ block: 'center' });
+}
+function resetPostForm() {
+    const form = $('#post-form');
+    if (!form) return;
+    form.reset();
+    const heading = form.querySelector('h3');
+    if (heading) heading.textContent = 'Добавить запись';
+    const cancelButton = $('#cancel-post-edit');
+    if (cancelButton) cancelButton.hidden = true;
 }
 async function saveProduct() {
     const data = Object.fromEntries(new FormData($('#product-form')));
@@ -474,6 +534,7 @@ function renderPage() {
     $('#app').innerHTML = (views[route] || viewHome)();
 
     if (route === 'catalog') initSearch();
+    if (route === 'blog')    initBlog();
     if (route === 'cart')    initStickers();
 }
 

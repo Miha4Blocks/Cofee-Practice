@@ -32,7 +32,7 @@ def init_db():
     with connect() as db:
         db.executescript('''
             CREATE TABLE IF NOT EXISTS users (
-                email TEXT PRIMARY KEY, name TEXT, password TEXT, salt TEXT, role TEXT);
+                email TEXT PRIMARY KEY, name TEXT, password TEXT, salt TEXT, role TEXT, login TEXT);
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY, name TEXT, cat TEXT, price INTEGER, em TEXT, desc TEXT);
             CREATE TABLE IF NOT EXISTS posts (
@@ -40,11 +40,33 @@ def init_db():
             CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY, date TEXT, user TEXT, items TEXT, total INTEGER, stk TEXT);
         ''')
+        user_columns = {row['name'] for row in db.execute('PRAGMA table_info(users)')}
+        if 'login' not in user_columns:
+            db.execute('ALTER TABLE users ADD COLUMN login TEXT')
+
+        used_logins = set()
+        for row in db.execute('SELECT email, login FROM users ORDER BY email').fetchall():
+            login = row['login']
+            if not login:
+                base = re.sub(r'[^A-Za-z0-9_.-]+', '_', row['email'].split('@', 1)[0])
+                base = base.strip('._-')[:30]
+                if len(base) < 3:
+                    base = 'user'
+                login = base
+                suffix = 2
+                while login.casefold() in used_logins:
+                    tail = '_' + str(suffix)
+                    login = base[:30 - len(tail)] + tail
+                    suffix += 1
+                db.execute('UPDATE users SET login=? WHERE email=?', (login, row['email']))
+            used_logins.add(login.casefold())
+        db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_login ON users(login COLLATE NOCASE)')
+
         # Начальные данные загружаются только при первом запуске.
         if db.execute('SELECT COUNT(*) FROM users').fetchone()[0] == 0:
             salt = secrets.token_hex(16)
-            db.execute('INSERT INTO users VALUES (?, ?, ?, ?, ?)',
-                       ('admin@zerno.ru', 'Админ', password_hash('admin123', salt), salt, 'admin'))
+            db.execute('INSERT INTO users (email, name, password, salt, role, login) VALUES (?, ?, ?, ?, ?, ?)',
+                       ('admin@zerno.ru', 'Админ', password_hash('admin123', salt), salt, 'admin', 'admin'))
             products = [
                 (1, 'Эспрессо', 'Кофе', 150, '☕', 'Двойной шот, плотная крема'),
                 (2, 'Капучино', 'Кофе', 230, '🥛', 'Молочная пена, 180 мл'),
@@ -145,23 +167,31 @@ class Handler(BaseHTTPRequestHandler):
             password = str(data.get('pass', ''))
             if route == '/api/register':
                 name = text(data, 'name', 80)
+                login = text(data, 'login', 30)
+                if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{2,29}', login):
+                    raise ValueError('Логин должен содержать от 3 до 30 латинских букв, цифр, точки, дефиса или подчёркивания.')
                 if not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email) or len(email) > 120:
                     raise ValueError('Введите корректный email.')
                 if len(password) < 6 or len(password) > 128:
                     raise ValueError('Пароль должен содержать от 6 до 128 символов.')
                 if db.execute('SELECT 1 FROM users WHERE email=?', (email,)).fetchone():
                     raise ValueError('Этот email уже зарегистрирован.')
+                if db.execute('SELECT 1 FROM users WHERE login=? COLLATE NOCASE', (login,)).fetchone():
+                    raise ValueError('Этот логин уже занят.')
                 salt = secrets.token_hex(16)
-                db.execute('INSERT INTO users VALUES (?, ?, ?, ?, ?)',
-                           (email, name, password_hash(password, salt), salt, 'user'))
-            found = db.execute('SELECT * FROM users WHERE email=?', (email,)).fetchone()
+                db.execute('INSERT INTO users (email, name, password, salt, role, login) VALUES (?, ?, ?, ?, ?, ?)',
+                           (email, name, password_hash(password, salt), salt, 'user', login))
+            identifier = str(data.get('identifier', data.get('email', ''))).strip().lower()
+            found = db.execute(
+                'SELECT * FROM users WHERE email=? COLLATE NOCASE OR login=? COLLATE NOCASE',
+                (identifier, identifier)).fetchone()
             if not found or not hmac.compare_digest(found['password'], password_hash(password, found['salt'])):
-                raise ValueError('Неверный email или пароль.')
+                raise ValueError('Неверный логин/email или пароль.')
             old = SimpleCookie(self.headers.get('Cookie', '')).get('session')
             if old:
                 SESSIONS.pop(old.value, None)
             token = secrets.token_urlsafe(32)
-            SESSIONS[token] = email
+            SESSIONS[token] = found['email']
             cookie = 'session=' + token + '; HttpOnly; SameSite=Lax; Path=/'
             return {'ok': True}, cookie
         if route == '/api/logout':
